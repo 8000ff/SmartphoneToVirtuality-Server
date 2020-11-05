@@ -14,7 +14,6 @@ import javafx.application.Application;
  * @author COGOLUEGNES Charles
  */
 public class Server {
-    private ServerSocket serverSocket;
     private static final int port = 4269;
     private static int upd_count = 0;
     private boolean running = true;
@@ -29,14 +28,8 @@ public class Server {
      * Then it triggers a method to follow the updates per second.
      */
     public Server() {
-      try {
-        serverSocket = new ServerSocket(port);
-        print_addr();
-        follow_updates();
-      }
-      catch (IOException ioe) {
-          ioe.printStackTrace();
-      }
+      print_addr();
+      follow_updates();
     }
 
     /**
