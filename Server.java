@@ -8,6 +8,11 @@ import java.net.DatagramPacket;
 
 import javafx.application.Application;
 
+/**
+ * The Server class which will receive sensors data from Android smartphone.
+ * The communication is made by UDP.
+ * @author COGOLUEGNES Charles
+ */
 public class Server {
     private ServerSocket serverSocket;
     private static final int port = 4269;
@@ -18,6 +23,11 @@ public class Server {
     public static final int TYPE_GYROSCOPE = 4;
     public static final int TYPE_PROXIMITY = 8;
 
+    /**
+     * Constructor of Server class.
+     * First it prints the network address and port.
+     * Then it triggers a method to follow the updates per second.
+     */
     public Server() {
       try {
         serverSocket = new ServerSocket(port);
@@ -29,6 +39,9 @@ public class Server {
       }
     }
 
+    /**
+     * Print the network address and port of the server.
+     */
     private void print_addr() {
       try(final DatagramSocket socket = new DatagramSocket()){
         socket.connect(InetAddress.getByName("8.8.8.8"), 10002);
@@ -39,21 +52,11 @@ public class Server {
       }
     }
 
-    public void startTCP() {
-      try {
-        while(true) {
-          BufferedReader in = new BufferedReader(new InputStreamReader(serverSocket.accept().getInputStream()));
-          String l = in.readLine();
-          process(l);
-          if(l.equals("STOP")) break;
-        }
-        serverSocket.close();
-      }
-      catch (IOException ioe) {
-          ioe.printStackTrace();
-      }
-    }
-
+    /**
+     * Starts the UDP server.
+     * Run indefinitely or until the running variable is set to false.
+     * When a result is given, it calls the process method.
+     */
     public void startUDP() {
       try {
         DatagramSocket socket = new DatagramSocket(port);
@@ -74,6 +77,11 @@ public class Server {
       }
     }
 
+    /**
+     * Process the given String.
+     * Parse the data and send to the GUI the changes of a sensor.
+     * @param s a String of format: "<type:int>_(<val:float>)|(<x:float> <y:float> <z:float>)"
+     */
     private void process(String s) {
       try {
         String[] splt = s.split("_");
@@ -93,6 +101,9 @@ public class Server {
       }
     }
 
+    /**
+     * Send to the GUI the number of updates per second.
+     */
     private void follow_updates() {
       new Thread() {
         public void run() {
@@ -110,6 +121,9 @@ public class Server {
       }.start();
     }
 
+    /**
+     * Static method which instanciates and start the server in a new thread.
+     */
     private static void startServer() {
       new Thread() {
         public void run() {
@@ -119,6 +133,12 @@ public class Server {
       }.start();
     }
 
+    /**
+     * Main method.
+     * First start the server.
+     * Then launch the GUI.
+     * @param args Arguments for the main program.
+     */
     public static void main(String[] args) {
       startServer();
       Application.launch(GUI.class, args);
