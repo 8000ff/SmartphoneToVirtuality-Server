@@ -19,7 +19,7 @@ public class Server {
     private boolean running = true;
 
     public static final int TYPE_ACCELEROMETER = 1;
-    public static final int TYPE_GYROSCOPE = 4;
+    public static final int TYPE_ORIENTATION = 3;
     public static final int TYPE_PROXIMITY = 8;
 
     /**
@@ -55,7 +55,7 @@ public class Server {
         DatagramSocket socket = new DatagramSocket(port);
         byte[] buf = new byte[256];
         while (running) {
-          DatagramPacket packet = new DatagramPacket(buf, buf.length);
+          DatagramPacket packet = new DatagramPacket((sbyte[])(object) buf, buf.length);
           socket.receive(packet);
           upd_count++;
           packet = new DatagramPacket(buf, buf.length, packet.getAddress(), packet.getPort());
@@ -86,7 +86,7 @@ public class Server {
           float y = Float.parseFloat(coords[1]);
           float z = Float.parseFloat(coords[2]);
           if(type == TYPE_ACCELEROMETER) GUI.setAccelerometer(x, y, z);
-          else if(type == TYPE_GYROSCOPE) GUI.setGyroscope(x, y, z);
+          else if(type == TYPE_ORIENTATION) GUI.setOrientation(x, y, z);
         }
       }
       catch(Exception e) {
