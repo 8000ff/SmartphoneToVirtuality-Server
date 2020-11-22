@@ -22,7 +22,7 @@ public class GUI extends Application{
 
     private static Label ups = new Label("ups");
     private static Label accelerometer = new Label("Accelerometer");
-    private static Label gyroscope = new Label("Gyroscope");
+    private static Label orientation = new Label("Orientation");
     private static Label proximity = new Label("Proximity");
 
     @Override
@@ -36,8 +36,8 @@ public class GUI extends Application{
         GridPane.setConstraints(accelerometer, 0, 1);
         grid.getChildren().add(accelerometer);
 
-        GridPane.setConstraints(gyroscope, 0, 2);
-        grid.getChildren().add(gyroscope);
+        GridPane.setConstraints(orientation, 0, 2);
+        grid.getChildren().add(orientation);
 
         GridPane.setConstraints(proximity, 0, 3);
         grid.getChildren().add(proximity);
@@ -65,13 +65,13 @@ public class GUI extends Application{
     }
 
     /**
-     * Set the label for the gyroscope sensor.
+     * Set the label for the orientation sensor.
      * @param x the x coord.
      * @param y the y coord.
      * @param z the z coord.
      */
-    public static void setGyroscope(float x_, float y_, float z_){
-      Platform.runLater(() -> gyroscope.setText("Gyroscope : x = " + x_ + " , y = " + y_ + " , z = " + z_));
+    public static void setOrientation(float x_, float y_, float z_){
+      Platform.runLater(() -> orientation.setText("Orientation : x = " + x_ + " , y = " + y_ + " , z = " + z_));
     }
 
     /**
