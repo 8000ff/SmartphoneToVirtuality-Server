@@ -1,10 +1,9 @@
 import asyncio
-from threading import Thread
-from time import sleep
+from struct import unpack
 
-TYPE_SCREEN_SIZE = -12
-TYPE_SUB = -13
-TYPE_UNSUB = -14
+TYPE_SCREEN_SIZE = 37
+TYPE_SUB = 38
+TYPE_UNSUB = 39
 
 class UdpServer:
 
@@ -12,9 +11,11 @@ class UdpServer:
         self.addrs = []
         self.screen_size = None
 
-    def process(self, data, addr):
-        type, _ = data.decode().split('_')
-        type = int(type)
+    def connection_made(self, transport):
+        self.transport = transport
+
+    def datagram_received(self, data, addr):
+        type = data[0]
         if type == TYPE_SUB:
             print(f"{addr} just subscribed! :)")
             if self.screen_size is not None:
@@ -23,18 +24,12 @@ class UdpServer:
         elif type == TYPE_UNSUB:
             print(f"{addr} just unsubscribed! :(")
             self.addrs.remove(addr)
+        elif type == TYPE_SCREEN_SIZE:
+            print(f"{addr} is connnected!")
+            self.screen_size = data
         else:
-            if self.screen_size is None and type == TYPE_SCREEN_SIZE:
-                print(f"{addr} is connnected!")
-                self.screen_size = data
             for ad in self.addrs:
                 self.transport.sendto(data, ad)
-        
-    def connection_made(self, transport):
-        self.transport = transport
-
-    def datagram_received(self, data, addr):
-        self.process(data, addr)
 
     def error_received(self, err):
         print(err)
