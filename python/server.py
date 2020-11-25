@@ -1,6 +1,9 @@
 import asyncio
 from struct import unpack
 
+ip = "192.168.1.67"
+port = 4269
+
 TYPE_SCREEN_SIZE = 37
 TYPE_SUB = 38
 TYPE_UNSUB = 39
@@ -35,9 +38,14 @@ class UdpServer:
         print(err)
 
 async def run_server():
-    print("Starting UDP server")
+    global ip
+    in_ = input("Enter an ip address (press enter for default): ")
+    if in_ is not None and in_ != "":
+        ip = in_
+
+    print(f"Starting UDP server on {ip}:{port}")
     loop = asyncio.get_running_loop()
-    transport, _ = await loop.create_datagram_endpoint(lambda: UdpServer(), local_addr=('192.168.1.67', 4269))
+    transport, _ = await loop.create_datagram_endpoint(lambda: UdpServer(), local_addr=(ip, port))
 
     try:
         await asyncio.sleep(3600)  # Serve for 1 hour.
