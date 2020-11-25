@@ -1,5 +1,4 @@
 from asyncio import get_running_loop, sleep, run
-from struct import unpack
 from socket import gethostbyname_ex, getfqdn
 
 port = 4269
