@@ -1,5 +1,5 @@
 from asyncio import get_running_loop, sleep, run
-from socket import gethostbyname_ex, getfqdn
+from netifaces import ifaddresses, interfaces, AF_INET
 
 port = 4269
 
@@ -8,7 +8,12 @@ TYPE_SUB = 38
 TYPE_UNSUB = 39
 
 def get_available_addr():
-    return gethostbyname_ex(getfqdn())[-1][-1]
+    for interface in interfaces():
+        try:
+            return ifaddresses(interface)[AF_INET][0]['addr']
+        except :
+            continue
+    return False
 
 class UdpServer:
 
@@ -39,7 +44,11 @@ class UdpServer:
         print(err)
 
 async def run_server():
-    ip = get_available_addr()
+    ip = input("Enter an address (press enter to let the server choose): ")
+    ip = get_available_addr() if ip == "" else ip
+    if not ip:
+        raise Exception("No available network interface.")
+
     print(f"Starting UDP server on {ip}:{port}")
     loop = get_running_loop()
     transport, _ = await loop.create_datagram_endpoint(lambda: UdpServer(), local_addr=(ip, port))
