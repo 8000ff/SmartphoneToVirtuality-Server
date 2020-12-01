@@ -1,5 +1,5 @@
 from asyncio import get_running_loop, sleep, run
-from netifaces import ifaddresses, interfaces, AF_INET
+from netifaces import ifaddresses, interfaces, AF_INET, gateways
 
 port = 4269
 
@@ -8,9 +8,11 @@ TYPE_SUB = 38
 TYPE_UNSUB = 39
 
 def get_available_addr():
+    gateway_interface = gateways()['default'][AF_INET][1]
     for interface in interfaces():
         try:
-            return ifaddresses(interface)[AF_INET][0]['addr']
+            if interface == gateway_interface:
+                return ifaddresses(interface)[AF_INET][0]['addr']
         except :
             continue
     return False
