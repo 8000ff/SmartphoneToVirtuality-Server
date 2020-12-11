@@ -1,26 +1,39 @@
 import os
-import subprocess
 from threading import Thread
+import ffmpeg
 
-opts = {"fps":30,"ext":".mp4"}
+# width=1280
+# height=720
+width=640
+height=360
+
+t = 60
+s = '{}x{}'.format(width, height)
 class Recorder(Thread):
     def __init__(self,input):
         Thread.__init__(self)
-        self.input = input
-        self.output = os.path.basename(input)
+        self.stream = (
+            ffmpeg
+            .input(input,s=s)
+            .output(os.path.basename(input)+".mov",t=t)
+            .global_args('-loglevel', 'error')
+        )
     def run(self):
-        cmd = "ffmpeg -v warning -an -n -i {} -r {} {}{}".format(self.input,opts["fps"],self.output,opts["ext"])
-        print(cmd)
-        ret = os.system(cmd)
+        self.stream.run()
 
-stream = os.popen('ls -1 /dev/video*')
-fd = stream.read().split('\n')
-cameras =  []
-for path in fd:
+cameras = []
+for path in os.popen('ls -1 /dev/video*').read().split('\n'):
     if(path):
         ret = os.system('ffmpeg -v panic -i '+path+' -t 0.5 -f null -')
         if ret == 0:
             cameras.append(path)
 
+print("Creating recorder")
+# recorders = [Recorder(cam) for cam in cameras[1:4]]
 recorders = [Recorder(cam) for cam in cameras]
+print("Creating start recording")
 [rec.start() for rec in recorders]
+print("Waiting end of recording")
+[rec.join() for rec in recorders]
+print("All recorders joined")
+os.system("reset")
