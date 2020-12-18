@@ -2,12 +2,15 @@ from sys import argv
 from asyncio import get_running_loop, sleep, run
 from netifaces import ifaddresses, interfaces, AF_INET, gateways
 from struct import pack
+from time import time
 
 port = 4269
 
 TYPE_SCREEN_SIZE = 37
 TYPE_SUB = 38
 TYPE_UNSUB = 39
+
+LOG_FILE = "./logs.txt"
 
 def get_available_addr():
     gateway_interface = gateways()['default'][AF_INET][1]
@@ -21,9 +24,10 @@ def get_available_addr():
 
 class UdpServer:
 
-    def __init__(self):
+    def __init__(self, log_data=False):
         self.addrs = []
         self.screen_size = None
+        self.log_data = log_data
 
     def connection_made(self, transport):
         self.transport = transport
@@ -32,6 +36,8 @@ class UdpServer:
         if data[0] == TYPE_SUB:
             print(f"{addr} just subscribed! :)")
             if self.screen_size is not None:
+                if self.log_data:
+                    self.log(data)
                 self.transport.sendto(self.screen_size, addr)
             self.addrs.append(addr)
         elif data[0] == TYPE_UNSUB:
@@ -41,6 +47,8 @@ class UdpServer:
             print(f"{addr} is connnected!")
             self.screen_size = data
         else:
+            if self.log_data:
+                self.log(data)
             self.send_to_all(data)
     
     def send_to_all(self, data):
@@ -49,6 +57,10 @@ class UdpServer:
 
     def error_received(self, err):
         print(err)
+
+    def log(self, data):
+        with open("test.txt", "a") as f:
+            f.write(time()+" "+data.hex())
 
 async def run_server():
     if len(argv) > 1:
