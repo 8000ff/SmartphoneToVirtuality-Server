@@ -28,6 +28,13 @@ class UdpServer:
         self.addrs = []
         self.screen_size = None
         self.log_data = log_data
+        
+        if self.log_data:
+            self.file = open(LOG_FILE, "a")
+
+    def __del__(self):
+        if self.file is not None:
+            self.file.close()
 
     def connection_made(self, transport):
         self.transport = transport
@@ -59,8 +66,7 @@ class UdpServer:
         print(err)
 
     def log(self, data):
-        with open("test.txt", "a") as f:
-            f.write(time()+" "+data.hex())
+        self.file.write(str(time())+" "+data.hex()+"\n")
 
 async def run_server():
     if len(argv) > 1:
@@ -73,7 +79,7 @@ async def run_server():
 
     print(f"Starting UDP server on {ip}:{port}")
     loop = get_running_loop()
-    transport, _ = await loop.create_datagram_endpoint(lambda: UdpServer(), local_addr=(ip, port))
+    transport, _ = await loop.create_datagram_endpoint(lambda: UdpServer(log_data=False), local_addr=(ip, port))
 
     try:
         await sleep(3600)  # Serve for 1 hour.
