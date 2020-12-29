@@ -33,7 +33,7 @@ class UdpServer:
             self.file = open(LOG_FILE, "a")
 
     def __del__(self):
-        if self.file is not None:
+        if self.log_data:
             self.file.close()
 
     def connection_made(self, transport):
