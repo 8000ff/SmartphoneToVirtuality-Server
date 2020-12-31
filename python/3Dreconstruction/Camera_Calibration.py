@@ -1,89 +1,75 @@
+import csv
 import argparse
 import cv2
 import numpy as np
 import os
+import timeout_decorator
+import pickle
 
 parser = argparse.ArgumentParser()
-parser.add_argument("inputVideo",type=str) #Input video file
-parser.add_argument("outputVideo",type=str) #Output Folder video frames
-parser.add_argument("output",type=str) # Output of the file containing the parameters
+parser.add_argument('inputs', type=str, nargs='+')
+parser.add_argument('--offset', type=int,default=0,help='time offset from video origin')
+parser.add_argument('--output',type=str,default='camparam')
+parser.add_argument('n',default=25,type=int,help='number of frames to use for parameter estimation')
+parser.add_argument('--timeout',default=.1,type=float,help='time allowed to find checkerboard per frame')
+parser.add_argument('--height',default=4,type=int,help='other dimension of the checkerboard')
+parser.add_argument('--width',default=6,type=int,help='dimension of the checkerboard')
+parser.add_argument('--frameskip',default=0,type=int,help='skip frames to not take redundent data')
+parser.add_argument('--failskip',default=5,type=int,help='skip frames when frame times out')
+
 args = parser.parse_args()
+dumps = list()
 
-"""
-Extraction des frames d'un fichier vidéo
-:pathIn: chemin vers le fichier vidéo
-:pathOut: chemin vers le dossier de sortie
-"""
-def extractFrames(pathIn, pathOut):
-    os.mkdir(pathOut)
-    cap = cv2.VideoCapture(pathIn)
-    count = 0
-    while (cap.isOpened()):
-        # Capture frame-by-frame
-        ret, frame = cap.read()
-        if ret == True:
-            print('Read %d frame: ' % count, ret)
-            cv2.imwrite(os.path.join(pathOut, "frame{:d}.jpg".format(count)), frame)  # save frame as JPEG file
-            count += 1
-        else:
-            break
-    # When everything done, release the capture
-    cap.release()
-    cv2.destroyAllWindows()
-	
-extractFrames(args.inputVideo,args.outputVideo)
-
-
-# termination criteria
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
-# prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,5,0)
-objp = np.zeros((6*4,3), np.float32)
-objp[:,:2] = np.mgrid[0:4,0:6].T.reshape(-1,2)
+@timeout_decorator.timeout(args.timeout)
+def findChessboardCorners(frame):
+    return cv2.findChessboardCorners(frame,(args.width,args.height),None)
 
-# Arrays to store object points and image points from all the images.
-objpoints = [] # 3d point in real world space
-imgpoints = [] # 2d points in image plane.
-"""
-Parcours les frames du dossier
-Récupère les points objet et image pour la calibration
-"""
-for i in range(50):
-    frame = cv2.imread(args.outputVideo + "/frame"+str(i)+".jpg")
-    
-    gray = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
+for input in args.inputs:
+    cap = cv2.VideoCapture(input)
+    [cap.read() for _ in range(args.offset)]
+    # prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,5,0)
+    objp = np.zeros((6*4,3), np.float32)
+    objp[:,:2] = np.mgrid[0:4,0:6].T.reshape(-1,2)
 
-    # Find the chess board corners
-    ret2, corners = cv2.findChessboardCorners(gray, (4,6),None)
+    # Arrays to store object points and image points from all the images.
+    objpoints = [] # 3d point in real world space
+    imgpoints = [] # 2d points in image plane.
 
-    # If found, add object points, image points (after refining them)
-    if ret2 == True:
-        objpoints.append(objp)
+    framecount = 0
+    while framecount < args.n and cap.isOpened() :
+        ret, frame = cap.read()
+        if ret == True:
+            gray = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
+            try:
+                usefull, corners = findChessboardCorners(gray)
+                if usefull:
+                    objpoints.append(objp)
+                    corners2 = cv2.cornerSubPix(gray,corners,(11,11),(-1,-1),criteria)
+                    imgpoints.append(corners2)
+                    frame = cv2.drawChessboardCorners(frame, (4,6), corners2,usefull)
+                    framecount += 1
+                    print('{}/{}'.format(framecount,args.n))
+                    [cap.read() for _ in range(args.frameskip)]
+            except Exception as e:
+                [cap.read() for _ in range(args.failskip)]
+                # print(e)
+                pass
+            cv2.imshow('frame',frame)
+        else:
+            print('Did not find enough frames for input %s' % input)
+            exit()
 
-        corners2 = cv2.cornerSubPix(gray,corners,(11,11),(-1,-1),criteria)
-        imgpoints.append(corners2)
-
-        # Draw and display the corners
-        #img = cv2.drawChessboardCorners(frame, (4,6), corners2,ret2)
-        #cv2.imshow('img',img)
-        if cv2.waitKey(1) &0XFF == ord('0'):
-            break
-    #cv2.imshow("My cam video", gray)
-    # Close and break the loop after pressing "x" key
-    if cv2.waitKey(1) &0XFF == ord('0'):
-        break
-		
-"""
-Calibration de la caméra
-mtxA: Matrice de la caméra intrinsèque
-distA: Coefficients de distortion de la lentille
-rvecsA: Vecteurs de rotation, la direction du vecteur spécifie l'axe de rotation et la magniture spécifie l'angle
-tvecsA: Vecteurs de translations
-"""
-ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1],None,None)
-
-"""
-Sauvegarde des paramètres de calibration
-"""
-np.savez(args.output, mtx=mtx, dist=dist, rvecs=rvecs, tvecs=tvecs)
-
+        if mask:= cv2.waitKey(1) & 0xFF:
+            if mask == ord('q'):
+                break
+    cap.release()
+    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1],None,None)
+    dumps.append([input, ret, mtx, dist, rvecs, tvecs])
+# dumps = np.array(dumps)
+# dumps = np.array(list(zip(dumps)))
+os.mkdir(args.output)
+for input, ret, mtx, dist, rvecs, tvecs in dumps:
+    np.savez('{}/{}'.format(args.output,os.path.basename(input)),input=input,ret=ret,mtx=mtx,dist=dist,rvecs=rvecs,tvecs=tvecs)
+cv2.destroyAllWindows()
