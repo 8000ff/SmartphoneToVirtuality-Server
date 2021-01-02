@@ -1,2 +1,6 @@
-python/videoArchive
+python/__pycache__
+python/.ipynb_checkpoints
+python/.vs/
+python/data/*
 *.npz
+*.csv

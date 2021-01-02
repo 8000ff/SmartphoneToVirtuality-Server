@@ -67,8 +67,6 @@ for input in args.inputs:
     cap.release()
     ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1],None,None)
     dumps.append([input, ret, mtx, dist, rvecs, tvecs])
-# dumps = np.array(dumps)
-# dumps = np.array(list(zip(dumps)))
 os.mkdir(args.output)
 for input, ret, mtx, dist, rvecs, tvecs in dumps:
     np.savez('{}/{}'.format(args.output,os.path.basename(input)),input=input,ret=ret,mtx=mtx,dist=dist,rvecs=rvecs,tvecs=tvecs)

@@ -4,33 +4,21 @@ from VideoCaptureAsync import VideoCaptureAsync
 import numpy as np
 from math import *
 
-from operator import and_
+from operator import and_,truth,add
 from functools import reduce
 from itertools import *
 from more_itertools import *
 
 import argparse
+from object_detection import ODUdp
 
 from time import time
-def delta_time():
-    return difference(repeatfunc(time),initial=time())
-def avg(g,n=10):
-    from collections import deque
-    last = deque(maxlen=n)
-    while True:
-        last.append(next(g))
-        yield np.mean(last)
-def printEvery(g,n=20):
-    i=0
-    while i := i+1 :
-        value = next(g)
-        if i%n==0:
-            print(value)
-        yield value
+from reconstruction import Reconstructor
 
 
 parser = argparse.ArgumentParser(description='Track the highest value point in videos.')
-parser.add_argument('inputs', type=str, nargs='+',default=['/dev/video{}'.format(x) for x in [0,2,4]])
+parser.add_argument('--inputs', type=str, nargs='+',default=['/dev/video{}'.format(x) for x in [0,2,4]])
+parser.add_argument('--params', type=str, nargs='+')
 parser.add_argument('--shrink', type=int,default=1)
 parser.add_argument('--width',type=int,default=640)
 parser.add_argument('--height',type=int,default=360)
@@ -38,13 +26,17 @@ parser.add_argument('--framerate',type=int,default=20)
 parser.add_argument('--xtile',type=int,default=1)
 parser.add_argument('--oversample',type=int,default=4)
 parser.add_argument('--mask',type=int,default=16)
+parser.add_argument('--ip',type=str,default="localhost")
+parser.add_argument('--port',type=int,default=4269)
+
+
 
 args = parser.parse_args()
 print(args)
 
-# Prints the average frametime over time
-avgdt = printEvery(avg(delta_time()),args.framerate)
+odudp = ODUdp(args.ip, args.port)
 
+reconstructor = Reconstructor([np.load(path) for path in args.params])
 
 tflip = lambda a,b : (b,a)
 shrink = lambda h,w : (int(h/args.shrink),int(w/args.shrink))
@@ -108,7 +100,7 @@ def find(frame,last):
 # Read the first frame of each capture
 acks,frames = list(zip(*(cap.read() for cap in caps)))
 
-while reduce(and_,acks) and next(avgdt):
+while reduce(and_,acks):
 
     displayed = [None] * len(caps)
 
@@ -122,6 +114,13 @@ while reduce(and_,acks) and next(avgdt):
             lasts[i] = find(deform(frame),last)
             marker(displayed[i],(shrink(*lasts[i])),size=5,value=(255,0,0))
 
+    # Finds 3D position from tracked image points
+    if reduce(add,map(truth,lasts)) >= 2:
+        position = reconstructor.reconstruct(*lasts)
+        print(position,"hey")
+        if reduce(and_,map(lambda x : x != None,position)):
+            odudp.sendto(odudp.get_byte_from(*position))
+    
     # Puts the images in a grid
     compose = np.vstack([np.hstack(group) for group in grouper(displayed,args.xtile,fillvalue)])
 
