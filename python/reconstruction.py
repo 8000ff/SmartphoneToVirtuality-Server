@@ -2,8 +2,10 @@ import numpy as np
 import cv2
 from itertools import *
 from more_itertools import *
+from functools import reduce
+from operator import *
 
-
+nn = lambda x : x is not None
 class Reconstructor:
 	def __init__(self,params):
 		self.cParams = params
@@ -12,20 +14,21 @@ class Reconstructor:
 		undist = []
 		for position,param in zip(positions,self.cParams):
 			if position and param:
-				pass # Format is unclear, skipping for now
-				# point = cv2.undistortPoints(position,param['mtx'],param['dist'])
-				# projmat = np.column_stack((
-				# 	cv2.Rodrigues(param['rvecs'][0])[0],
-				# 	param['tvecs'][0]
-				# ))
-				# undist.append((point,projmat))
+				# pass # Format is unclear, skipping for now
+				point = cv2.undistortPoints(np.float32([*position]),param['mtx'],param['dist'])
+				projmat = np.column_stack((
+					cv2.Rodrigues(param['rvecs'][0])[0],
+					param['tvecs'][0]
+				))
+				undist.append((point,projmat))
 		homo = []
 		for (pointA,projMatA),(pointB,projMatB) in combinations(undist,2):			
-			if pointA and projMatA and pointB and projMatB :
+			if reduce(and_,map(nn,[pointA,projMatA,pointB,projMatB])) :
 				homo.append(cv2.triangulatePoints(projMatA, projMatB, pointA,pointB).T)
-
+		homoMean = np.mean(homo,axis=0)
+		
 		#Another way of averaging the results would be welcome
-		return np.mean(homo,axis=0) if homo else (None,None,None)
+		return np.ndarray.flatten(cv2.convertPointsFromHomogeneous(homoMean)) if homo else (None,None,None)
 
 	
 #Loading of all the cameras parameters

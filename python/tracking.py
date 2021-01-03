@@ -117,8 +117,7 @@ while reduce(and_,acks):
     # Finds 3D position from tracked image points
     if reduce(add,map(truth,lasts)) >= 2:
         position = reconstructor.reconstruct(*lasts)
-        print(position,"hey")
-        if reduce(and_,map(lambda x : x != None,position)):
+        if position.any():
             odudp.sendto(odudp.get_byte_from(*position))
     
     # Puts the images in a grid
